@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Interactive Map - Click to Add Marker</title>
+
+  <!-- Leaflet CSS -->
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+    #map {
+      height: 100vh;
+      width: 100%;
+    }
+  </style>
+
+</head>
+<body>
+
+<div id="map"></div>
+
+<!-- Leaflet JS -->
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+  // Initialize map (center of India)
+  var map = L.map('map').setView([22.9734, 78.6569], 5);
+
+  // Add OpenStreetMap tiles
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  // Click event to add marker
+  map.on('click', function(e) {
+
+    var lat = e.latlng.lat;
+    var lng = e.latlng.lng;
+
+    var title = prompt("Enter title:");
+    if (!title) return;
+
+    var description = prompt("Enter description:");
+    var image = prompt("Paste image URL:");
+
+    var marker = L.marker([lat, lng]).addTo(map);
+
+    marker.bindPopup(
+      "<h3>" + title + "</h3>" +
+      "<img src='" + image + "' width='150'/><br>" +
+      "<p>" + description + "</p>"
+    ).openPopup();
+
+  });
+
+</script>
+
+</body>
+</html>
