@@ -3,21 +3,23 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Interactive Map - Click to Add Marker</title>
-
-  <!-- Leaflet CSS -->
+  <title>Live Map with Firebase</title>
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
   <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
+    body { margin: 0; font-family: Arial; }
+    #map { height: 100vh; width: 100%; }
+    .btn {
+      margin-top: 5px;
+      padding: 5px 8px;
+      border: none;
+      cursor: pointer;
+      border-radius: 4px;
+      color: white;
     }
-    #map {
-      height: 100vh;
-      width: 100%;
-    }
+    .edit { background: #007bff; }
+    .delete { background: red; }
   </style>
 
 </head>
@@ -25,39 +27,120 @@
 
 <div id="map"></div>
 
-<!-- Leaflet JS -->
-
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
+<!-- Firebase -->
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
+
 <script>
-  // Initialize map (center of India)
+  // 🔴 PASTE YOUR FIREBASE CONFIG HERE
+  const firebaseConfig = {
+    apiKey: "YOUR_KEY",
+    authDomain: "YOUR_DOMAIN",
+    projectId: "YOUR_PROJECT_ID"
+  };
+
+  const app = firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
   var map = L.map('map').setView([22.9734, 78.6569], 5);
 
-  // Add OpenStreetMap tiles
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors'
   }).addTo(map);
 
-  // Click event to add marker
-  map.on('click', function(e) {
+  let markers = {};
 
-    var lat = e.latlng.lat;
-    var lng = e.latlng.lng;
+  function createMarker(docId, data) {
+    let marker = L.marker([data.lat, data.lng]).addTo(map);
 
-    var title = prompt("Enter title:");
+    function updatePopup() {
+      let div = document.createElement("div");
+
+      div.innerHTML = `
+        <h3>${data.title}</h3>
+        <img src="${data.image}" width="150"/><br>
+        <p>${data.description}</p>
+      `;
+
+      let editBtn = document.createElement("button");
+      editBtn.innerText = "Edit";
+      editBtn.className = "btn edit";
+
+      let deleteBtn = document.createElement("button");
+      deleteBtn.innerText = "Delete";
+      deleteBtn.className = "btn delete";
+
+      editBtn.onclick = async () => {
+        let title = prompt("Edit title:", data.title);
+        if (!title) return;
+
+        let description = prompt("Edit description:", data.description);
+        let image = prompt("Edit image URL:", data.image);
+
+        await db.collection("markers").doc(docId).update({
+          title, description, image
+        });
+      };
+
+      deleteBtn.onclick = async () => {
+        if (confirm("Delete marker?")) {
+          await db.collection("markers").doc(docId).delete();
+        }
+      };
+
+      div.appendChild(editBtn);
+      div.appendChild(deleteBtn);
+
+      marker.bindPopup(div);
+    }
+
+    updatePopup();
+    markers[docId] = marker;
+  }
+
+  // 🔥 REALTIME LISTENER (AUTO UPDATE)
+  db.collection("markers").onSnapshot(snapshot => {
+
+    snapshot.docChanges().forEach(change => {
+      let docId = change.doc.id;
+      let data = change.doc.data();
+
+      if (change.type === "added") {
+        createMarker(docId, data);
+      }
+
+      if (change.type === "modified") {
+        map.removeLayer(markers[docId]);
+        createMarker(docId, data);
+      }
+
+      if (change.type === "removed") {
+        map.removeLayer(markers[docId]);
+        delete markers[docId];
+      }
+    });
+
+  });
+
+  // ADD MARKER
+  map.on('click', async function(e) {
+    let title = prompt("Enter title:");
     if (!title) return;
 
-    var description = prompt("Enter description:");
-    var image = prompt("Paste image URL:");
+    let description = prompt("Enter description:");
+    let image = prompt("Paste image URL:");
 
-    var marker = L.marker([lat, lng]).addTo(map);
-
-    marker.bindPopup(
-      "<h3>" + title + "</h3>" +
-      "<img src='" + image + "' width='150'/><br>" +
-      "<p>" + description + "</p>"
-    ).openPopup();
-
+    await db.collection("markers").add({
+      lat: e.latlng.lat,
+      lng: e.latlng.lng,
+      title,
+      description,
+      image
+    });
   });
 
 </script>
