@@ -144,6 +144,371 @@
   });
 
 </script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Drone Flight Time Calculator</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f5f5f0;
+    color: #1a1a1a;
+    font-size: 14px;
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
 
+  .container { max-width: 760px; margin: 0 auto; }
+
+  .page-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 1.75rem;
+  }
+  .page-header .icon {
+    width: 40px; height: 40px;
+    background: #1D9E75;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .page-header h1 { font-size: 20px; font-weight: 600; }
+  .page-header p { font-size: 13px; color: #666; margin-top: 2px; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+  .card {
+    background: #fff;
+    border: 1px solid #e5e5e0;
+    border-radius: 12px;
+    padding: 1.25rem;
+  }
+  .card h3 {
+    font-size: 11px;
+    font-weight: 600;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    margin-bottom: 1rem;
+  }
+
+  .field { margin-bottom: .9rem; }
+  .field label { display: block; font-size: 13px; color: #555; margin-bottom: 4px; }
+  .field input {
+    width: 100%;
+    padding: 7px 10px;
+    font-size: 14px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fff;
+    color: #1a1a1a;
+    transition: border-color 0.15s;
+  }
+  .field input:focus { outline: none; border-color: #1D9E75; }
+  .field .hint { font-size: 11px; color: #aaa; margin-top: 3px; }
+
+  .prop-card { margin-top: 1rem; }
+  .prop-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .75rem; }
+
+  .results {
+    margin-top: 1rem;
+    background: #f0faf5;
+    border: 1px solid #b5e2cf;
+    border-radius: 12px;
+    padding: 1.25rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 10px;
+  }
+
+  .metric {
+    background: #fff;
+    border: 1px solid #e5e5e0;
+    border-radius: 8px;
+    padding: .75rem 1rem;
+  }
+  .metric .lbl {
+    font-size: 11px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    margin-bottom: 4px;
+  }
+  .metric .val {
+    font-size: 22px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: #1a1a1a;
+  }
+  .metric .unit { font-size: 12px; color: #888; font-weight: 400; }
+  .metric.good { border-color: #b5e2cf; }
+  .metric.good .val { color: #0F6E56; }
+  .metric.warn { border-color: #FAC775; }
+  .metric.warn .val { color: #854F0B; }
+  .metric.danger { border-color: #F7C1C1; }
+  .metric.danger .val { color: #A32D2D; }
+
+  .formula {
+    margin-top: 1rem;
+    background: #fff;
+    border-left: 3px solid #1D9E75;
+    padding: .75rem 1rem;
+    font-size: 13px;
+    color: #555;
+    border-radius: 0 8px 8px 0;
+  }
+  .formula strong { color: #1a1a1a; font-weight: 600; }
+
+  .factors {
+    margin-top: 1rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .factor {
+    background: #fff;
+    border: 1px solid #e5e5e0;
+    border-radius: 8px;
+    padding: .5rem .75rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+  }
+  .factor .fname { color: #555; }
+  .badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+  .badge.good { background: #E1F5EE; color: #085041; }
+  .badge.warn { background: #FAEEDA; color: #633806; }
+  .badge.danger { background: #FCEBEB; color: #501313; }
+
+  .tip {
+    margin-top: 1rem;
+    font-size: 12px;
+    color: #888;
+    padding: .65rem 1rem;
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid #e5e5e0;
+  }
+
+  /* Golden rule box */
+  .golden {
+    margin-top: 1rem;
+    background: #fff8e6;
+    border: 1px solid #FAC775;
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    font-size: 13px;
+    color: #633806;
+  }
+  .golden strong { font-weight: 600; }
+
+  @media (max-width: 560px) {
+    .grid { grid-template-columns: 1fr; }
+    .prop-grid { grid-template-columns: 1fr 1fr; }
+    .factors { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <div class="page-header">
+    <div class="icon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M6 6l3 3M18 6l-3 3M6 18l3-3M18 18l-3-3"/>
+        <circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/>
+        <circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/>
+      </svg>
+    </div>
+    <div>
+      <h1>Drone Flight Time Calculator</h1>
+      <p>Estimate hover time from motor, propeller &amp; battery specs</p>
+    </div>
+  </div>
+
+  <!-- Row 1: Battery + Drone -->
+  <div class="grid">
+    <div class="card">
+      <h3>Battery</h3>
+      <div class="field">
+        <label>Capacity (mAh)</label>
+        <input type="number" id="capacity" value="5000" min="100" step="100" oninput="calc()">
+        <div class="hint">Common: 3000 – 10000 mAh</div>
+      </div>
+      <div class="field">
+        <label>Cell count (S)</label>
+        <input type="number" id="cells" value="4" min="1" max="12" step="1" oninput="calc()">
+        <div class="hint">3S = 11.1V · 4S = 14.8V · 6S = 22.2V</div>
+      </div>
+      <div class="field">
+        <label>Usable capacity (%)</label>
+        <input type="number" id="usable" value="80" min="50" max="95" step="1" oninput="calc()">
+        <div class="hint">Never fully discharge a LiPo — 80% is safe default</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Drone &amp; Motors</h3>
+      <div class="field">
+        <label>Total weight (g)</label>
+        <input type="number" id="weight" value="1500" min="100" step="50" oninput="calc()">
+        <div class="hint">Include battery, camera, all components</div>
+      </div>
+      <div class="field">
+        <label>Number of motors</label>
+        <input type="number" id="motors" value="4" min="1" max="8" step="1" oninput="calc()">
+        <div class="hint">Quad = 4 · Hex = 6 · Octo = 8</div>
+      </div>
+      <div class="field">
+        <label>Current per motor at hover (A)</label>
+        <input type="number" id="motorA" value="8" min="0.5" max="80" step="0.5" oninput="calc()">
+        <div class="hint">From motor datasheet at your hover thrust point</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 2: Propeller -->
+  <div class="card prop-card">
+    <h3>Propeller &amp; Efficiency</h3>
+    <div class="prop-grid">
+      <div class="field">
+        <label>Prop diameter (inch)</label>
+        <input type="number" id="propD" value="10" min="3" max="30" step="0.5" oninput="calc()">
+      </div>
+      <div class="field">
+        <label>Prop pitch (inch)</label>
+        <input type="number" id="propP" value="4.5" min="2" max="20" step="0.5" oninput="calc()">
+      </div>
+      <div class="field">
+        <label>Hover throttle (%)</label>
+        <input type="number" id="throttle" value="50" min="20" max="90" step="1" oninput="calc()">
+        <div class="hint">Ideal hover: 40–55%</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div class="results" id="results">
+    <div class="metric good">
+      <div class="lbl">Est. flight time</div>
+      <div class="val" id="r-time">--<span class="unit"> min</span></div>
+    </div>
+    <div class="metric">
+      <div class="lbl">Total current draw</div>
+      <div class="val" id="r-curr">--<span class="unit"> A</span></div>
+    </div>
+    <div class="metric">
+      <div class="lbl">Thrust per motor</div>
+      <div class="val" id="r-thrust">--<span class="unit"> g</span></div>
+    </div>
+    <div class="metric">
+      <div class="lbl">Battery voltage</div>
+      <div class="val" id="r-volt">--<span class="unit"> V</span></div>
+    </div>
+    <div class="metric">
+      <div class="lbl">Power draw</div>
+      <div class="val" id="r-power">--<span class="unit"> W</span></div>
+    </div>
+    <div class="metric">
+      <div class="lbl">T:W efficiency</div>
+      <div class="val" id="r-tw">--</div>
+    </div>
+  </div>
+
+  <!-- Formula -->
+  <div class="formula" id="formula-box">
+    Fill in your specs above to see the step-by-step calculation.
+  </div>
+
+  <!-- Factor badges -->
+  <div class="factors" id="factor-cards"></div>
+
+  <!-- Golden rule -->
+  <div class="golden">
+    <strong>Golden rule:</strong> Hover throttle should sit at ~50% of max thrust — that's your most efficient operating point and gives the best flight time. If you're hovering above 60%, consider larger props or a lighter build.
+  </div>
+
+  <p class="tip">
+    Actual flight time varies with wind, aggressive flying, temperature, and battery age.
+    This estimate assumes steady hover. Real-world time is typically 10–20% less.
+  </p>
+
+</div>
+
+<script>
+function calc() {
+  const cap     = +document.getElementById('capacity').value;
+  const cells   = +document.getElementById('cells').value;
+  const usable  = +document.getElementById('usable').value / 100;
+  const weight  = +document.getElementById('weight').value;
+  const motors  = +document.getElementById('motors').value;
+  const motorA  = +document.getElementById('motorA').value;
+  const propD   = +document.getElementById('propD').value;
+  const propP   = +document.getElementById('propP').value;
+  const throttle = +document.getElementById('throttle').value;
+
+  if (!cap || !cells || !weight || !motors || !motorA) return;
+
+  const totalA         = motorA * motors;
+  const voltNom        = cells * 3.7;
+  const usableMah      = cap * usable;
+  const flightMin      = (usableMah / (totalA * 1000)) * 60;
+  const thrustPerMotor = weight / motors;
+  const power          = totalA * voltNom;
+  const efficiency     = weight / power;
+
+  // Flight time result + color
+  const timeEl = document.getElementById('r-time');
+  timeEl.innerHTML = `${flightMin.toFixed(1)}<span class="unit"> min</span>`;
+  timeEl.parentElement.className = 'metric ' +
+    (flightMin >= 15 ? 'good' : flightMin >= 8 ? 'warn' : 'danger');
+
+  document.getElementById('r-curr').innerHTML   = `${totalA.toFixed(1)}<span class="unit"> A</span>`;
+  document.getElementById('r-thrust').innerHTML = `${Math.round(thrustPerMotor)}<span class="unit"> g</span>`;
+  document.getElementById('r-volt').innerHTML   = `${voltNom.toFixed(1)}<span class="unit"> V</span>`;
+  document.getElementById('r-power').innerHTML  = `${Math.round(power)}<span class="unit"> W</span>`;
+
+  const twEl = document.getElementById('r-tw');
+  twEl.innerHTML = `${(1 * 100).toFixed(0)}<span class="unit">%</span>`;
+
+  // Formula
+  document.getElementById('formula-box').innerHTML =
+    `<strong>Step 1:</strong> Usable capacity = ${cap} mAh × ${(usable * 100).toFixed(0)}% = ${Math.round(usableMah)} mAh<br>
+     <strong>Step 2:</strong> Total current = ${motors} motors × ${motorA} A = ${totalA.toFixed(1)} A<br>
+     <strong>Step 3:</strong> Flight time = (${Math.round(usableMah)} ÷ ${totalA.toFixed(1)} ÷ 1000) × 60 = <strong>${flightMin.toFixed(1)} minutes</strong>`;
+
+  // Factor cards
+  const factors = [
+    { name: `Prop ${propD}" × ${propP}"`,    val: propD >= 10 ? 'efficient' : 'compact',          cls: propD >= 10 ? 'good' : 'warn' },
+    { name: 'Throttle at hover',              val: throttle + '%',                                  cls: throttle >= 35 && throttle <= 60 ? 'good' : 'warn' },
+    { name: 'Usable capacity',                val: (usable * 100).toFixed(0) + '%',                cls: usable >= 0.75 ? 'good' : 'warn' },
+    { name: 'Cell config',                    val: `${cells}S / ${voltNom.toFixed(1)} V`,          cls: 'good' },
+    { name: 'Efficiency (g/W)',               val: efficiency.toFixed(2),                           cls: efficiency > 4 ? 'good' : efficiency > 2.5 ? 'warn' : 'danger' },
+    { name: 'Motor config',                   val: `${motors}x @ ${motorA} A`,                     cls: 'good' },
+  ];
+
+  document.getElementById('factor-cards').innerHTML = factors.map(f =>
+    `<div class="factor">
+      <span class="fname">${f.name}</span>
+      <span class="badge ${f.cls}">${f.val}</span>
+    </div>`
+  ).join('');
+}
+
+calc();
+</script>
+</body>
+</html>
 </body>
 </html>
